@@ -1,0 +1,28 @@
+.{
+    .name = .zig_tk,
+    .version = "0.0.0",
+    .fingerprint = 0xdf7b382d651adaf8, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .tcl = .{
+            .url = "https://prdownloads.sourceforge.net/tcl/tcl9.0.4-src.tar.gz",
+            .hash = "N-V-__8AAHFt-AK9D6lj7sbBpidaTQtvlnyMZxxiKYEzlX2u",
+            .lazy = true,
+        },
+        .tk = .{
+            .url = "https://prdownloads.sourceforge.net/tcl/tk9.0.4-src.tar.gz",
+            .hash = "N-V-__8AAP_5HwHRp7CORYJNZJC_zkXgp_eR2UdN2lSxvSdk",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "README.md",
+        "LICENSE",
+        "src",
+        "examples",
+        "build",
+        "tools",
+    },
+}

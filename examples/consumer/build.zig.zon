@@ -1,0 +1,15 @@
+.{
+    .name = .consumer,
+    .version = "0.0.0",
+    .fingerprint = 0x705b372797d57c68, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        // 公開後は .url + .hash で参照する(このサンプルではリポジトリ内のパスを参照する)
+        .zig_tk = .{ .path = "../.." },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
