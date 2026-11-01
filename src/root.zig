@@ -11,6 +11,8 @@ pub const tcl = @import("tcl.zig");
 const interp_mod = @import("interp.zig");
 pub const Interp = interp_mod.Interp;
 pub const Error = interp_mod.Error;
+/// 引数の数が実行時に決まるTclコマンドを組み立てて実行するビルダ(Interp.callの動的版)。
+pub const Cmd = interp_mod.Cmd;
 
 const callback_mod = @import("callback.zig");
 pub const Callback = callback_mod.Callback;

@@ -1,0 +1,19 @@
+{
+  "title": "offscreen spike",
+  "geometry": "420x330",
+  "script": "grid columnconfigure .form 1 -weight 1; grid rowconfigure .form 6 -weight 1",
+  "widgets": [
+    { "name": "form", "class": "ttk::frame", "options": { "-padding": "8" }, "manager": "pack", "layout": { "-fill": "both", "-expand": "1" } },
+    { "name": "l_name", "parent": "form", "class": "ttk::label", "options": { "-text": "名前" }, "manager": "grid", "layout": { "-row": "0", "-column": "0", "-sticky": "w", "-pady": "2" } },
+    { "name": "e_name", "parent": "form", "class": "ttk::entry", "options": {}, "manager": "grid", "layout": { "-row": "0", "-column": "1", "-sticky": "ew", "-pady": "2" } },
+    { "name": "l_lang", "parent": "form", "class": "ttk::label", "options": { "-text": "言語" }, "manager": "grid", "layout": { "-row": "1", "-column": "0", "-sticky": "w", "-pady": "2" } },
+    { "name": "c_lang", "parent": "form", "class": "ttk::combobox", "options": { "-values": "Zig C Tcl", "-state": "readonly" }, "manager": "grid", "layout": { "-row": "1", "-column": "1", "-sticky": "ew", "-pady": "2" } },
+    { "name": "k_opt", "parent": "form", "class": "ttk::checkbutton", "options": { "-text": "オプションを有効にする" }, "manager": "grid", "layout": { "-row": "2", "-column": "1", "-sticky": "w" } },
+    { "name": "r_a", "parent": "form", "class": "ttk::radiobutton", "options": { "-text": "小", "-value": "s", "-variable": "::size" }, "manager": "grid", "layout": { "-row": "3", "-column": "1", "-sticky": "w" } },
+    { "name": "s_val", "parent": "form", "class": "ttk::scale", "options": { "-from": "0", "-to": "100", "-value": "40" }, "manager": "grid", "layout": { "-row": "4", "-column": "1", "-sticky": "ew" } },
+    { "name": "p_bar", "parent": "form", "class": "ttk::progressbar", "options": { "-value": "65" }, "manager": "grid", "layout": { "-row": "5", "-column": "1", "-sticky": "ew", "-pady": "4" } },
+    { "name": "t_memo", "parent": "form", "class": "text", "options": { "-height": "4", "-width": "30" }, "manager": "grid", "layout": { "-row": "6", "-column": "0", "-columnspan": "2", "-sticky": "nsew" } },
+    { "name": "b_ok", "parent": "form", "class": "ttk::button", "options": { "-text": "OK" }, "manager": "grid", "layout": { "-row": "7", "-column": "1", "-sticky": "e", "-pady": "6" } }
+  ],
+  "after": "set ::size s; .form.t_memo insert end \"日本語の文字列\\nEnglish text\"; .form.c_lang current 0"
+}
