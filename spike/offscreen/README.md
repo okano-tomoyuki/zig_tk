@@ -42,11 +42,40 @@ zig build run -- <画面定義.json> <出力ディレクトリ>     # 例: zig b
 - 時間は、編集のたびに描き直して画像を渡しても実用的な範囲（tokotachi の WebAssembly 版は約 8 ms）。
 - Tk 9.0.4 の Windows 版では、`wm geometry . +100+100`（位置だけの指定）で画面外から戻らなかった（8.6 では戻る）。
   大きさを含めた `420x330+100+100` なら戻る。
+- 画面内・不透明度 0 の方式は、利用者のフォーカスを奪うことが分かった（下の追加検証）。
+
+## 追加検証: 利用者の操作への影響（フォーカス・マウス）
+
+```sh
+tkrender sample.json out                                 # 通常(上の表の結果)
+tkrender sample.json out desktop out/onscreen_truth.png  # Windows: 見えない専用デスクトップで描く
+tkrender sample.json out embed                           # Windows: 自前のWin32ウィンドウに -use で埋め込む
+tkrender sample.json out override                        # X11: overrideredirect にして画面外で描く
+```
+
+| 方式 | 前面/入力フォーカス | マウス | 画像（実物との差分） | 編集1回 |
+|---|---|---|---|---|
+| Windows: 画面内・不透明度0 | **奪う** | 素通り | 一致 | 約 32 ms |
+| Windows: 自前ウィンドウに `-use` で埋め込み | **奪う** | 素通り | 0 画素 | 約 16〜20 ms |
+| **Windows: 見えない専用デスクトップ**（`CreateDesktop` + `SetThreadDesktop`） | **奪わない**（利用者のデスクトップを 20 ms ごとに監視し、変化なし） | 影響なし（利用者のデスクトップにウィンドウが無い） | **0 画素**（下端の角丸 3 行を除く） | 約 20 ms |
+| X11: 画面外 | **奪う**（入力フォーカスが Tk のウィンドウへ移る） | 影響なし（画面外） | 0 画素 | 約 6 ms |
+| **X11: 画面外 + `wm overrideredirect . 1`** | **奪わない**（PointerRoot のまま） | 影響なし | **0 画素** | 約 6 ms |
+
+- Windows の Tk は、**アプリで最初のトップレベルを（`wm withdraw .` していても）内部で作った時点でアクティブにする**
+  （tkWinWm.c の `SetActiveWindow`）。`update` の直後に、非表示の `TkTopLevel` が前面になっていた。
+  画面内に置く方式・埋め込む方式ではこれを避けられない。
+- **専用デスクトップに移したスレッドで Tk を動かすと、Tk のウィンドウは利用者のデスクトップに一切現れず、それでも描画され、
+  PrintWindow で実物と同じ画素が取れる。** 前面の変化は、デスクトップを移す前に起動した監視スレッド（元のデスクトップに残る）で確かめた。
+  `SetThreadDesktop` は、そのスレッドがウィンドウを 1 つも作る前に呼ぶ必要がある。
+- `toplevel -use` で Tk 以外のウィンドウに埋め込む場合、そのウィンドウが Tk の埋め込みプロトコル（`TK_INFO` 等、win/tkWin.h）に
+  応答しないと、Tk は確認のダイアログ（MessageBox）を出して止まる（透明なウィンドウでは見えないまま止まる）。
+- X11 は、ウィンドウマネージャが新しく表示されたウィンドウにフォーカスを与えていた。`overrideredirect` で管理外にすると与えられない。
+
+**結論: Windows は「見えない専用デスクトップ」、Linux は「画面外 + overrideredirect + XComposite」で、
+利用者の操作に影響を与えずに、実物と同じ画像と位置を 1 回 6〜20 ms で取り出せる。**
 
 ## 残っている確認事項
 
-- 不透明度 0 のウィンドウが、利用者のマウス操作を横取りしないか、フォーカスを奪わないか（Windows。必要なら Win32 で
-  WS_EX_TRANSPARENT・WS_EX_NOACTIVATE を付ける）。
 - 表示倍率（DPI）の扱い。この検証はプロセスを DPI 対応にして物理画素で取り込んだ。Tk のスケーリング（`tk scaling` 1.33）は
   利用者のアプリの実行時と同じになるか。
 - 画面のない Linux（CI 等）では Xvfb が要る（WSLg・デスクトップでは不要）。

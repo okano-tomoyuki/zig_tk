@@ -58,6 +58,18 @@ fn onError(_: *Display, ev: *XErrorEvent) callconv(.c) c_int {
 
 pub fn makeDpiAware() void {}
 
+extern fn XGetInputFocus(dpy: *Display, focus: *XID, revert_to: *c_int) c_int;
+
+/// 現在のXの入力フォーカスのウィンドウ(取得できなければ0)。
+pub fn inputFocus() usize {
+    const dpy = XOpenDisplay(null) orelse return 0;
+    defer _ = XCloseDisplay(dpy);
+    var focus: XID = 0;
+    var revert: c_int = 0;
+    _ = XGetInputFocus(dpy, &focus, &revert);
+    return focus;
+}
+
 pub const Source = union(enum) {
     /// `winfo id .` のウィンドウ。
     composite: XID,
