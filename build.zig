@@ -34,8 +34,9 @@ pub fn build(b: *std.Build) void {
     });
     const build_options = b.addOptions();
     mod.addOptions("build_options", build_options);
+    addThemes(b, mod);
 
-    const examples = [_][]const u8{ "hello", "form", "dialogs", "listbox", "editor", "sketch", "explorer", "workers" };
+    const examples = [_][]const u8{ "hello", "form", "dialogs", "listbox", "editor", "sketch", "explorer", "workers", "themes" };
     const test_step = b.step("test", "Run tests");
     const mod_tests = b.addTest(.{ .root_module = mod });
     const run_mod_tests = b.addRunArtifact(mod_tests);
@@ -248,6 +249,27 @@ fn runFromLayout(b: *std.Build, name: []const u8, files: []const Placed) *std.Bu
     const run = std.Build.Step.Run.create(b, b.fmt("run {s}", .{name}));
     run.addFileArg(exe_copy);
     return run;
+}
+
+/// 同梱するttkテーマ(Sun Valley)のスクリプトと画像を、@embedFileで参照するモジュール "sun_valley" にする。
+/// テーマを使わないアプリでは参照されないため、実行ファイルには含まれない。
+fn addThemes(b: *std.Build, mod: *std.Build.Module) void {
+    const sv = b.dependency("sun_valley", .{});
+    const wf = b.addWriteFiles();
+    _ = wf.addCopyDirectory(sv.path("sv_ttk"), "sv_ttk", .{});
+    _ = wf.addCopyFile(sv.path("LICENSE"), "sv_ttk/LICENSE");
+    const index = wf.add("sun_valley.zig",
+        \\pub const sv = @embedFile("sv_ttk/sv.tcl");
+        \\pub const light = @embedFile("sv_ttk/theme/light.tcl");
+        \\pub const dark = @embedFile("sv_ttk/theme/dark.tcl");
+        \\pub const sprites_light = @embedFile("sv_ttk/theme/sprites_light.tcl");
+        \\pub const sprites_dark = @embedFile("sv_ttk/theme/sprites_dark.tcl");
+        \\pub const spritesheet_light = @embedFile("sv_ttk/theme/spritesheet_light.png");
+        \\pub const spritesheet_dark = @embedFile("sv_ttk/theme/spritesheet_dark.png");
+        \\pub const license = @embedFile("sv_ttk/LICENSE");
+        \\
+    );
+    mod.addAnonymousImport("sun_valley", .{ .root_source_file = index });
 }
 
 /// examples/<name>.zig をビルドし、利用側と同じ installAppWith でインストールして run-<name> を定義する。

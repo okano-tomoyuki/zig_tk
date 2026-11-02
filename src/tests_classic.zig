@@ -115,3 +115,24 @@ test "option menu with strings, command and setValues" {
     try iom.destroy();
     try testing.expectEqualStrings("0", try root.call(.{ "llength", try root.call(.{ "info", "commands", "::zt_cb*" }) }));
 }
+
+test "bundled Sun Valley theme loads once and switches classic widget colors too" {
+    const root = try tk.Tk.init(testing.allocator);
+    defer root.deinit();
+    _ = try root.call(.{ "wm", "withdraw", "." });
+    const style = tk.ttk.Style.init(root);
+
+    try root.setTheme(.sun_valley_dark);
+    try testing.expectEqualStrings("sun-valley-dark", try style.currentTheme());
+    _ = try root.call(.{"update"});
+    const listbox = try tk.Listbox.init(root, .{});
+    try testing.expectEqualStrings("#1c1c1c", try root.call(.{ listbox, "cget", "-background" }));
+
+    // 2回目以降は読み込み直さない(スプライトの画像が増えない)
+    const images = try std.fmt.parseInt(u32, try root.call(.{ "eval", "llength [image names]" }), 10);
+    try root.setTheme(.sun_valley_light);
+    try testing.expectEqualStrings("sun-valley-light", try style.currentTheme());
+    try testing.expectEqualStrings("#fafafa", try root.call(.{ ".", "cget", "-background" }));
+    try testing.expectEqual(images, try std.fmt.parseInt(u32, try root.call(.{ "eval", "llength [image names]" }), 10));
+    try testing.expect(std.mem.indexOf(u8, tk.theme.sun_valley_license, "MIT License") != null);
+}

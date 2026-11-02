@@ -10,6 +10,7 @@ const Interp = interp_mod.Interp;
 const Error = interp_mod.Error;
 const TimerId = interp_mod.TimerId;
 const callback = @import("../callback.zig");
+const theme = @import("../theme.zig");
 const Widget = widget.Widget;
 
 pub const Tk = struct {
@@ -88,6 +89,11 @@ pub const Tk = struct {
     /// msミリ秒後にcbを1回だけ呼ぶ(Python Misc.after相当)。繰り返す場合はcb内で再度予約する。
     pub fn after(self: Tk, ms: u32, cb: callback.Callback) Error!TimerId {
         return self.w.interp.after(ms, cb);
+    }
+
+    /// 同梱のttkテーマに切り替える(theme.zig参照)。例: try root.setTheme(.sun_valley_dark)
+    pub fn setTheme(self: Tk, which: theme.Theme) Error!void {
+        return theme.use(self.w.interp, which);
     }
 
     /// どのスレッドからでも呼べる。func(payload)をこのインタプリタのスレッドで実行する(Interp.post参照)。

@@ -2,6 +2,14 @@
 
 Python の Tkinter に近い書き味で、Zig から Tcl/Tk の GUI を扱うライブラリです。
 
+- **導入は1行**: `zig fetch --save git+https://github.com/okano-tomoyuki/zig_tk.git`。Tcl/Tk もソースから自動でビルドされ、別途インストールする必要はありません。
+- **配布は実行ファイルだけ**: 静的リンク(依存のオプション `.linkage = .static`)なら、Tcl/Tk のランタイムごと 1 つの実行ファイルにまとまります。
+- **今風の見た目も1行**: Windows 11 風のテーマ(明るい/暗い)を同梱しています。`try root.setTheme(.sun_valley_dark);`
+
+| `.sun_valley_light` | `.sun_valley_dark` |
+|---|---|
+| ![明るいテーマ](docs/images/themes-light.png) | ![暗いテーマ](docs/images/themes-dark.png) |
+
 ```zig
 const std = @import("std");
 const tk = @import("zig_tk");
@@ -157,6 +165,20 @@ _ = try tk.RadiobuttonOf(Size).init(frame, .{ .text = "Small", .variable = size,
 
 Tcl 側のエラーは `error.TclError` として返り、メッセージは `root.lastError()` で取得できます。ラップされていない Tcl コマンドは、`root.call(.{ "wm", "attributes", ".", "-topmost", true })` のように直接呼べます。
 
+### テーマ
+
+`root.setTheme(.sun_valley_light)` / `root.setTheme(.sun_valley_dark)` で、同梱の [Sun Valley](https://github.com/rdbende/Sun-Valley-ttk-theme) テーマに切り替わります。ttk の Widget に加えて、classic の Widget の配色も切り替わります。実行中に何度切り替えても構いません。
+
+Sun Valley には独自のスタイルもあります。`style` オプションで指定します。
+
+| スタイル | 対象 | 見た目 |
+|---|---|---|
+| `Accent.TButton` | `ttk.Button` | アクセントカラーのボタン |
+| `Toggle.TButton` | `ttk.Checkbutton` | 押したままになるボタン |
+| `Switch.TCheckbutton` | `ttk.Checkbutton` | スイッチ |
+
+テーマのスクリプトと画像は実行ファイルに埋め込まれます(`setTheme` を使わないアプリには含まれません)。Tk 標準のテーマ(`clam`、`vista` など)は `ttk.Style.themeUse` で選べます。
+
 ### スレッド
 
 Widget・変数・`call` などは、`Tk.init` を呼んだスレッドからだけ使えます(Tcl のインタプリタは生成したスレッド以外から触れません)。Debug / ReleaseSafe ビルドでは、別のスレッドから使うと panic で止まります。
@@ -210,6 +232,7 @@ try root.post(line, Line.append);
 | `zig build run-sketch` | Canvas でドラッグ描画 |
 | `zig build run-explorer` | Notebook と Treeview |
 | `zig build run-workers` | 複数のワーカースレッドから `post` で Text に追記 |
+| `zig build run-themes` | 同梱テーマと、明るい/暗いの切り替え(`-- dark` で暗いテーマから起動) |
 
 ## 開発
 
@@ -238,3 +261,5 @@ zig build test --cache-dir ~/.cache/zt-cache --prefix ~/zt-out
 ## ライセンス
 
 zig_tk 本体は [MIT License](LICENSE) です。ビルド時に取得する Tcl/Tk は、それぞれの [license.terms](https://www.tcl-lang.org/software/tcltk/license.html)(BSD 系)に従います。
+
+同梱テーマの [Sun Valley](https://github.com/rdbende/Sun-Valley-ttk-theme) は MIT License です。`setTheme` を使うアプリを配布する場合は、そのライセンス文面を配布物に含めてください。文面は `tk.theme.sun_valley_license` で取得できます。

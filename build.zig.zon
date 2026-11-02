@@ -14,6 +14,10 @@
             .hash = "N-V-__8AAP_5HwHRp7CORYJNZJC_zkXgp_eR2UdN2lSxvSdk",
             .lazy = true,
         },
+        .sun_valley = .{
+            .url = "https://github.com/rdbende/Sun-Valley-ttk-theme/archive/refs/tags/v2.6.1.tar.gz",
+            .hash = "N-V-__8AAJCyRQBX0M5m8eJhrAsv-FJUltKPuC30CjvWpfuX",
+        },
     },
     .paths = .{
         "build.zig",

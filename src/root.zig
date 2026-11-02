@@ -58,6 +58,8 @@ pub const TraceMode = variable.TraceMode;
 pub const TraceId = variable.TraceId;
 
 pub const ttk = @import("ttk.zig");
+pub const theme = @import("theme.zig");
+pub const Theme = theme.Theme;
 pub const messagebox = @import("dialogs/messagebox.zig");
 pub const filedialog = @import("dialogs/filedialog.zig");
 pub const colorchooser = @import("dialogs/colorchooser.zig");
