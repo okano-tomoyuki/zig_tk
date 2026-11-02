@@ -84,5 +84,25 @@ pub extern fn Tcl_CreateObjCommand(
 ) ?*Command;
 pub extern fn Tcl_DeleteCommand(interp: *Interp, name: [*:0]const u8) c_int;
 
+// スレッド間でのイベントの受け渡し。Tcl_ThreadQueueEvent/Tcl_ThreadAlertはどのスレッドから呼んでもよい。
+pub const ThreadId = ?*opaque {};
+pub const EventProc = *const fn (ev: *Event, flags: c_int) callconv(.c) c_int;
+pub const EventDeleteProc = *const fn (ev: *Event, client_data: ClientData) callconv(.c) c_int;
+/// Tcl_Event。キューに入れる側はこれを先頭に置いた領域をTcl_Allocで確保する(処理後にTclが解放する)。
+pub const Event = extern struct {
+    proc: EventProc,
+    next: ?*Event,
+};
+pub const QUEUE_TAIL: c_int = 0;
+/// Tcl 8.6 では unsigned int、Tcl 9.x では size_t。
+pub const AllocSize = if (major_version >= 9) usize else c_uint;
+
+pub extern fn Tcl_GetCurrentThread() ThreadId;
+pub extern fn Tcl_ThreadQueueEvent(thread: ThreadId, ev: *Event, position: c_int) void;
+pub extern fn Tcl_ThreadAlert(thread: ThreadId) void;
+pub extern fn Tcl_DeleteEvents(proc: EventDeleteProc, client_data: ClientData) void;
+pub extern fn Tcl_AttemptAlloc(size: AllocSize) ?*anyopaque;
+pub extern fn Tcl_BackgroundException(interp: *Interp, code: c_int) void;
+
 pub extern fn Tk_Init(interp: *Interp) c_int;
 pub extern fn Tk_MainLoop() void;

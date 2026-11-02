@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
     const build_options = b.addOptions();
     mod.addOptions("build_options", build_options);
 
-    const examples = [_][]const u8{ "hello", "form", "dialogs", "listbox", "editor", "sketch", "explorer" };
+    const examples = [_][]const u8{ "hello", "form", "dialogs", "listbox", "editor", "sketch", "explorer", "workers" };
     const test_step = b.step("test", "Run tests");
     const mod_tests = b.addTest(.{ .root_module = mod });
     const run_mod_tests = b.addRunArtifact(mod_tests);

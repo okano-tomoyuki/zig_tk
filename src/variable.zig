@@ -61,6 +61,7 @@ pub fn Variable(comptime T: type) type {
 
         /// 現在値。StringVarの戻り値は変数が次に変更されるまで有効。
         pub fn get(self: Self) Error!T {
+            self.interp.checkThread();
             const obj = tcl.Tcl_GetVar2Ex(self.interp.raw, self.name.ptr, null, tcl.GLOBAL_ONLY | tcl.LEAVE_ERR_MSG) orelse
                 return self.interp.fail();
             const raw = self.interp.raw;
@@ -90,6 +91,7 @@ pub fn Variable(comptime T: type) type {
         }
 
         pub fn set(self: Self, v: T) Error!void {
+            self.interp.checkThread();
             const obj = try value.toObj(self.interp, v);
             if (tcl.Tcl_SetVar2Ex(self.interp.raw, self.name.ptr, null, obj, tcl.GLOBAL_ONLY | tcl.LEAVE_ERR_MSG) == null)
                 return self.interp.fail();

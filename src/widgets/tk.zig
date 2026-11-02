@@ -62,7 +62,8 @@ pub const Tk = struct {
     }
 
     /// 全てのウィンドウが破棄されるまでイベントループを回す。
-    pub fn mainloop(_: Tk) void {
+    pub fn mainloop(self: Tk) void {
+        self.w.interp.checkThread();
         tcl.Tk_MainLoop();
     }
 
@@ -87,6 +88,11 @@ pub const Tk = struct {
     /// msミリ秒後にcbを1回だけ呼ぶ(Python Misc.after相当)。繰り返す場合はcb内で再度予約する。
     pub fn after(self: Tk, ms: u32, cb: callback.Callback) Error!TimerId {
         return self.w.interp.after(ms, cb);
+    }
+
+    /// どのスレッドからでも呼べる。func(payload)をこのインタプリタのスレッドで実行する(Interp.post参照)。
+    pub fn post(self: Tk, payload: anytype, comptime func: anytype) error{OutOfMemory}!void {
+        return self.w.interp.post(payload, func);
     }
 
     /// イベントループが暇になった時にcbを1回だけ呼ぶ(Python Misc.after_idle相当)。

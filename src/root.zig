@@ -101,4 +101,5 @@ test {
     _ = @import("tests_layout.zig");
     _ = @import("tests_image.zig");
     _ = @import("tests_classic.zig");
+    _ = @import("tests_thread.zig");
 }

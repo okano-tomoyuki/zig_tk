@@ -157,6 +157,31 @@ _ = try tk.RadiobuttonOf(Size).init(frame, .{ .text = "Small", .variable = size,
 
 Tcl 側のエラーは `error.TclError` として返り、メッセージは `root.lastError()` で取得できます。ラップされていない Tcl コマンドは、`root.call(.{ "wm", "attributes", ".", "-topmost", true })` のように直接呼べます。
 
+### スレッド
+
+Widget・変数・`call` などは、`Tk.init` を呼んだスレッドからだけ使えます(Tcl のインタプリタは生成したスレッド以外から触れません)。Debug / ReleaseSafe ビルドでは、別のスレッドから使うと panic で止まります。
+
+別のスレッドから画面を更新するには `post` を使います。`post` はどのスレッドから呼んでもよく、渡した値を複製して、Tk のスレッドのイベントループで関数を呼びます。
+
+```zig
+const Line = struct {
+    text: tk.Text,
+    buf: [64]u8,
+    len: usize,
+
+    fn append(self: Line) !void {
+        try self.text.insert(.end, self.buf[0..self.len]);
+    }
+};
+
+// ワーカースレッドの中で
+try root.post(line, Line.append);
+```
+
+- 値にポインタやスライスを含める場合は、関数が実行されるまで指す先を有効にしておいてください。
+- 関数が返したエラーは `bgerror` で報告されます。
+- `deinit` の時点で未実行のものは捨てられます。`post` するスレッドは `deinit` より前に止めてください。
+
 ## 提供している機能
 
 | 分類 | 内容 |
@@ -184,6 +209,7 @@ Tcl 側のエラーは `error.TclError` として返り、メッセージは `ro
 | `zig build run-editor` | Text、メニューバー、ポップアップメニュー、検索 |
 | `zig build run-sketch` | Canvas でドラッグ描画 |
 | `zig build run-explorer` | Notebook と Treeview |
+| `zig build run-workers` | 複数のワーカースレッドから `post` で Text に追記 |
 
 ## 開発
 

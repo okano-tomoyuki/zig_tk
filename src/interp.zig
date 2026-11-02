@@ -32,6 +32,8 @@ pub const Interp = struct {
     next_id: u32 = 0,
     /// 直近のTclError発生時のメッセージ(Tclの結果は次の呼び出しで上書きされるため複製して保持する)。
     last_error: std.ArrayList(u8) = .empty,
+    /// インタプリタを生成したスレッド(Tclのイベントループを回すスレッド)。生成後は変わらない。
+    owner: tcl.ThreadId,
 
     var find_executable_done = false;
 
@@ -46,7 +48,7 @@ pub const Interp = struct {
 
         const self = try gpa.create(Interp);
         errdefer gpa.destroy(self);
-        self.* = .{ .raw = raw, .gpa = gpa, .arena = .init(gpa) };
+        self.* = .{ .raw = raw, .gpa = gpa, .arena = .init(gpa), .owner = tcl.Tcl_GetCurrentThread() };
         errdefer self.last_error.deinit(gpa);
 
         if (tcl.Tcl_Init(raw) != tcl.OK) return self.fail();
@@ -95,6 +97,82 @@ pub const Interp = struct {
         return id;
     }
 
+    /// 現在のスレッドがインタプリタを生成したスレッドか。どのスレッドから呼んでもよい。
+    pub fn isOwnerThread(self: *const Interp) bool {
+        return tcl.Tcl_GetCurrentThread() == self.owner;
+    }
+
+    /// Tcl_Interpは生成したスレッド以外から触ると内部状態を壊しうるため、安全検査付きのビルド
+    /// (Debug/ReleaseSafe)では違反をその場で止める。別スレッドからの操作はpostで依頼する。
+    pub fn checkThread(self: *const Interp) void {
+        if (std.debug.runtime_safety and !self.isOwnerThread())
+            @panic("zig_tk: Interp used from a thread other than the one that created it (use Interp.post)");
+    }
+
+    /// どのスレッドから呼んでもよい。payloadを値のまま複製し、インタプリタを生成したスレッドの
+    /// イベントループ上で func(payload) を呼ぶ(cpp_tk post()、Python queue.Queue + after相当)。
+    /// funcの中ではWidget等を通常通り操作できる。funcが返したエラーはbgerrorで報告される。
+    /// 例: interp.post(Line{ .app = &app, .text = buf }, App.appendLine)
+    ///
+    /// - payloadがポインタやスライスを含む場合、指す先はfuncが実行されるまで有効であること。
+    /// - destroyの時点で未実行のものは実行されずに捨てられる。postするスレッドはdestroyより前に止めること。
+    pub fn post(self: *Interp, payload: anytype, comptime func: anytype) error{OutOfMemory}!void {
+        const P = @TypeOf(payload);
+        const Job = extern struct {
+            posted: Posted,
+            payload: [@sizeOf(P)]u8 align(@alignOf(P)),
+
+            fn run(posted: *Posted) callconv(.c) void {
+                const job: *@This() = @fieldParentPtr("posted", posted);
+                // funcの中でdestroyされても触らないよう、先に取り出しておく
+                const raw = posted.raw;
+                const p: *const P = @ptrCast(&job.payload);
+                invoke(p.*) catch |err| Posted.report(raw, err);
+            }
+
+            fn invoke(p: P) anyerror!void {
+                return func(p);
+            }
+        };
+        // Tclの割り当ては(32bit環境を含め)8バイト境界までしか保証されない
+        if (@alignOf(Job) > 8) @compileError("post: payload alignment must be at most 8, got " ++ @typeName(P));
+
+        const mem = tcl.Tcl_AttemptAlloc(@sizeOf(Job)) orelse return error.OutOfMemory;
+        const job: *Job = @ptrCast(@alignCast(mem));
+        job.posted = .{ .header = .{ .proc = Posted.service, .next = null }, .raw = self.raw, .run = Job.run };
+        @memcpy(&job.payload, std.mem.asBytes(&payload));
+        tcl.Tcl_ThreadQueueEvent(self.owner, &job.posted.header, tcl.QUEUE_TAIL);
+        tcl.Tcl_ThreadAlert(self.owner);
+    }
+
+    /// postがTclのイベントキューに入れるイベントの共通部分。headerを先頭に置く(Tclはheaderの
+    /// アドレスを確保領域の先頭として解放する)。payloadの型ごとの処理はrunが受け持つ。
+    const Posted = extern struct {
+        header: tcl.Event,
+        raw: *tcl.Interp,
+        run: *const fn (posted: *Posted) callconv(.c) void,
+
+        fn service(ev: *tcl.Event, _: c_int) callconv(.c) c_int {
+            const posted: *Posted = @fieldParentPtr("header", ev);
+            posted.run(posted);
+            return 1; // 処理済み(Tclがキューから外して解放する)
+        }
+
+        /// destroy時にこのインタプリタ宛ての未実行イベントを選ぶ(Tcl_DeleteEventsのフィルタ)。
+        fn belongsTo(ev: *tcl.Event, client_data: tcl.ClientData) callconv(.c) c_int {
+            if (ev.proc != &service) return 0;
+            const posted: *Posted = @fieldParentPtr("header", ev);
+            return @intFromBool(posted.raw == @as(*tcl.Interp, @ptrCast(client_data.?)));
+        }
+
+        fn report(raw: *tcl.Interp, err: anyerror) void {
+            var buf: [128]u8 = undefined;
+            const msg = std.fmt.bufPrint(&buf, "zig_tk: posted job failed: error.{s}", .{@errorName(err)}) catch "zig_tk: posted job failed";
+            tcl.Tcl_SetObjResult(raw, tcl.Tcl_NewStringObj(msg.ptr, @intCast(msg.len)));
+            tcl.Tcl_BackgroundException(raw, tcl.ERROR);
+        }
+    };
+
     /// 保留中のイベント(再描画・タイマー等)を処理する(Python Misc.update相当)。
     pub fn update(self: *Interp) Error!void {
         _ = try self.call(.{"update"});
@@ -140,6 +218,9 @@ pub const Interp = struct {
     }
 
     pub fn destroy(self: *Interp) void {
+        self.checkThread();
+        // 未実行のpostが、破棄後のインタプリタで(同じスレッドの後のイベントループで)実行されないようにする
+        tcl.Tcl_DeleteEvents(Posted.belongsTo, self.raw);
         // コマンド削除時のdelete procでコールバックの確保領域が解放される。
         tcl.Tcl_DeleteInterp(self.raw);
         self.last_error.deinit(self.gpa);
@@ -180,6 +261,7 @@ pub const Interp = struct {
 
     /// インタプリタ内で一意な名前を生成する(arenaに確保され、インタプリタ破棄まで有効)。
     pub fn uniqueName(self: *Interp, comptime prefix: []const u8) Error![:0]const u8 {
+        self.checkThread();
         self.next_id += 1;
         return std.fmt.allocPrintSentinel(self.arena.allocator(), prefix ++ "{d}", .{self.next_id}, 0);
     }
@@ -192,6 +274,7 @@ pub const Interp = struct {
         client_data: tcl.ClientData,
         delete_proc: ?tcl.CmdDeleteProc,
     ) Error!void {
+        self.checkThread();
         if (tcl.Tcl_CreateObjCommand(self.raw, name.ptr, proc, client_data, delete_proc) == null)
             return self.fail();
     }
@@ -233,7 +316,9 @@ pub const Cmd = struct {
     interp: *Interp,
     objs: std.ArrayList(*tcl.Obj) = .empty,
 
+    /// Tclコマンドの呼び出しはここを通るため、スレッドの検査もここで行う。
     pub fn init(interp: *Interp) Cmd {
+        interp.checkThread();
         return .{ .interp = interp };
     }
 
