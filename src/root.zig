@@ -64,6 +64,8 @@ pub const messagebox = @import("dialogs/messagebox.zig");
 pub const filedialog = @import("dialogs/filedialog.zig");
 pub const colorchooser = @import("dialogs/colorchooser.zig");
 pub const font = @import("font.zig");
+pub const Chart = @import("chart.zig").Chart;
+pub const Table = @import("table.zig").Table;
 pub const PhotoImage = @import("image.zig").PhotoImage;
 pub const Color = colorchooser.Color;
 pub const TimerId = interp_mod.TimerId;
@@ -104,4 +106,8 @@ test {
     _ = @import("tests_image.zig");
     _ = @import("tests_classic.zig");
     _ = @import("tests_thread.zig");
+    _ = @import("chart.zig");
+    _ = @import("tests_chart.zig");
+    _ = @import("table.zig");
+    _ = @import("tests_table.zig");
 }

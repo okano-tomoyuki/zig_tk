@@ -179,6 +179,52 @@ Sun Valley には独自のスタイルもあります。`style` オプション�
 
 テーマのスクリプトと画像は実行ファイルに埋め込まれます(`setTheme` を使わないアプリには含まれません)。Tk 標準のテーマ(`clam`、`vista` など)は `ttk.Style.themeUse` で選べます。
 
+### グラフ(Chart)
+
+Canvas に折れ線・散布図を描きます。軸の範囲と目盛りはデータから自動で決まり、配色はテーマに合わせます。
+
+![グラフ](docs/images/chart-dark.png)
+
+```zig
+const chart = try tk.Chart.init(gpa, root, .{ .title = "センサーの値", .x_label = "時刻 [s]", .y_label = "温度 [°C]" });
+defer chart.deinit();
+try chart.pack(.{ .fill = .both, .expand = true });
+
+const a = try chart.addSeries(.{ .label = "センサーA", .max_points = 300 }); // 直近300点だけ保持
+try chart.append(a, t, value);
+```
+
+- `append` / `setData` で点を変えると、イベントループが暇になった時に1回だけ描き直します(続けて追加しても描画は1回)。ウィンドウの大きさが変わった時も描き直します。
+- 系列は `.kind = .line`(既定)/ `.scatter`。色を省くと既定の配色から順に選びます。
+- `setXRange` / `setYRange` で軸の範囲を固定できます(`null` で自動に戻ります)。
+
+### 表(Table)
+
+構造体の配列を、そのまま表として表示・編集します。列は構造体のフィールドから作られます。
+
+![表](docs/images/table-light.png)
+
+```zig
+const Member = struct { name: []const u8, age: u32, role: Role, active: bool, rating: ?f64 = null };
+
+const table = try tk.Table(Member).init(gpa, root, .{
+    .editable = true,
+    .columns = &.{ // 省略すると全フィールドを宣言順に表示
+        .{ .field = .name, .heading = "名前" },
+        .{ .field = .age, .heading = "年齢" },
+        .{ .field = .rating, .heading = "評価", .decimals = 1, .editable = false },
+    },
+});
+defer table.deinit();
+try table.setRows(&members);
+table.onEdit(&app, App.edited); // fn edited(self: *App, row: usize, field: tk.Table(Member).Field) !void
+```
+
+- 見出しのクリックで、その列の型に合った順序で並べ替えます(数値は数値順、enum は宣言順、`null` は先頭)。もう一度で逆順になります。
+- `.editable = true` なら、セルのダブルクリックで編集できます。入力はフィールドの型に変換して戻し、変換できない入力は確定しません。enum は選択肢から選び、bool はダブルクリックで切り替えます。
+- 使えるフィールドの型は `[]const u8`、整数、浮動小数点数、bool、enum と、それらの optional(空欄が `null`)です。
+- 文字列のフィールドは表が複製して持ちます。`table.get(i)` / `table.items()` で現在の値を取得できます。
+
 ### スレッド
 
 Widget・変数・`call` などは、`Tk.init` を呼んだスレッドからだけ使えます(Tcl のインタプリタは生成したスレッド以外から触れません)。Debug / ReleaseSafe ビルドでは、別のスレッドから使うと panic で止まります。
@@ -212,6 +258,7 @@ try root.post(line, Line.append);
 | ttk Widget | Frame, Labelframe, Label, Button, Checkbutton, Radiobutton, Entry, Spinbox, Combobox, Scale, Scrollbar, Progressbar, Separator, Notebook, Treeview, Panedwindow, Menubutton, Style |
 | 変数 | StringVar, IntVar, DoubleVar, BooleanVar, `Variable(enum)`、trace |
 | ダイアログ | `messagebox`, `filedialog`, `colorchooser` |
+| 追加の部品 | `Chart`(折れ線・散布図)、`Table(Row)`(構造体の表示・並べ替え・編集)、同梱テーマ(`setTheme`) |
 | その他 | `after` / `afterIdle` / `afterCancel`, `PhotoImage`, `font`, クリップボード, ウィンドウマネージャ操作(`title` / `geometry` / `protocol` / `iconphoto` …), スクロール連携(`scrollbar.attach(listbox, .y)`) |
 
 ## Tkinter との主な違い
@@ -233,6 +280,8 @@ try root.post(line, Line.append);
 | `zig build run-explorer` | Notebook と Treeview |
 | `zig build run-workers` | 複数のワーカースレッドから `post` で Text に追記 |
 | `zig build run-themes` | 同梱テーマと、明るい/暗いの切り替え(`-- dark` で暗いテーマから起動) |
+| `zig build run-chart` | 2つの系列をリアルタイムに流すグラフ |
+| `zig build run-table` | 構造体の表の並べ替え・編集・追加・削除 |
 
 ## 開発
 
