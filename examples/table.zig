@@ -34,10 +34,31 @@ const App = struct {
     }
 
     fn remove(self: *App) !void {
-        const sel = try self.table.selection(self.table.gpa);
-        defer self.table.gpa.free(sel);
-        var i = sel.len;
-        while (i > 0) : (i -= 1) try self.table.remove(sel[i - 1]);
+        try self.table.removeSelected();
+        try self.showCount();
+    }
+
+    /// 10万行を作って表示する(表は見えている行だけを描くので、行数が多くても軽い)。
+    fn generate(self: *App) !void {
+        var arena: std.heap.ArenaAllocator = .init(self.table.gpa);
+        defer arena.deinit(); // setRowsが文字列を複製するので、すぐに解放してよい
+        const rows = try arena.allocator().alloc(Member, 100_000);
+        var prng: std.Random.DefaultPrng = .init(1);
+        const r = prng.random();
+        for (rows, 0..) |*m, i| m.* = .{
+            .name = try std.fmt.allocPrint(arena.allocator(), "メンバー {d:0>6}", .{i}),
+            .age = r.intRangeAtMost(u32, 20, 65),
+            .role = r.enumValue(Role),
+            .active = r.boolean(),
+            .rating = if (r.boolean()) @round(r.float(f64) * 50) / 10 else null,
+        };
+        try self.table.setRows(rows);
+        try self.showCount();
+    }
+
+    fn showCount(self: *App) !void {
+        var buf: [64]u8 = undefined;
+        try self.status.set(try std.fmt.bufPrint(&buf, "{d} 行", .{self.table.len()}));
     }
 };
 
@@ -55,9 +76,8 @@ pub fn main(init: std.process.Init) !void {
     const toolbar = try ttk.Frame.init(body, .{});
     try toolbar.pack(.{ .fill = .x, .pady = 6 });
 
-    const list = try ttk.Frame.init(body, .{});
-    try list.pack(.{ .fill = .both, .expand = true });
-    const table = try Members.init(init.gpa, list, .{
+    // 縦のスクロールバーは表に内蔵されている
+    const table = try Members.init(init.gpa, body, .{
         .editable = true,
         .height = 8,
         .columns = &.{
@@ -69,10 +89,7 @@ pub fn main(init: std.process.Init) !void {
         },
     });
     defer table.deinit();
-    const sb = try ttk.Scrollbar.init(list, .{});
-    try sb.attach(table.treeview(), .y);
-    try sb.pack(.{ .side = .right, .fill = .y });
-    try table.pack(.{ .side = .left, .fill = .both, .expand = true });
+    try table.pack(.{ .fill = .both, .expand = true });
 
     try table.setRows(&.{
         .{ .name = "佐藤 花子", .age = 34, .role = .manager, .active = true, .rating = 4.5 },
@@ -90,6 +107,8 @@ pub fn main(init: std.process.Init) !void {
     try add.pack(.{ .side = .left });
     const del = try ttk.Button.init(toolbar, .{ .text = "選択行を削除", .command = tk.callback(&app, App.remove) });
     try del.pack(.{ .side = .left, .padx = 6 });
+    const gen = try ttk.Button.init(toolbar, .{ .text = "10万行を生成", .command = tk.callback(&app, App.generate) });
+    try gen.pack(.{ .side = .left });
     const status = try ttk.Label.init(body, .{ .textvariable = app.status });
     try status.pack(.{ .anchor = .w, .pady = 6 });
 

@@ -206,3 +206,165 @@ fn doubleClick(root: tk.Tk, target: tk.ttk.Treeview, x: i32, y: i32) !void {
         _ = try root.call(.{ "event", "generate", target, "<ButtonRelease-1>", "-x", x, "-y", y });
     }
 }
+
+/// bindに登録されたスクリプトを、%置換を埋めて実行する(フォーカスの無いテストでもキー操作を試すため)。
+fn fire(root: tk.Tk, target: tk.ttk.Treeview, sequence: []const u8, keysym: []const u8, delta: i32) !void {
+    const script = try root.call(.{ "bind", target, sequence });
+    var buf: [1024]u8 = undefined;
+    const mapped = try root.call(.{ "string", "map", .{ "%x", "0", "%y", "0", "%X", "0", "%Y", "0", "%W", target, "%A", "{}", "%K", keysym, "%k", "0", "%D", delta, "; break", "" }, script });
+    const copy = buf[0..mapped.len];
+    @memcpy(copy, mapped);
+    _ = try root.call(.{ "eval", copy });
+}
+
+test "table keeps only the visible rows in the treeview and scrolls over all rows" {
+    const root = try initRoot();
+    defer root.deinit();
+    const T = tk.Table(Person);
+    const table = try T.init(testing.allocator, root, .{ .height = 10 });
+    defer table.deinit();
+    try table.pack(.{});
+
+    var arena: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena.deinit();
+    const rows = try arena.allocator().alloc(Person, 10_000);
+    for (rows, 0..) |*r, i| r.* = .{ .name = try std.fmt.allocPrint(arena.allocator(), "p{d:0>5}", .{i}), .age = @intCast(i % 70), .role = .dev, .active = true };
+    try table.setRows(rows);
+    try testing.expectEqual(10_000, table.len());
+
+    // Treeviewの項目は表示できる行数分だけ
+    const tv = table.treeview();
+    const shown = try tv.children(testing.allocator, .root);
+    testing.allocator.free(shown);
+    try testing.expectEqual(10, shown.len);
+    try testing.expectEqualStrings("p00000", try root.call(.{ tv, "set", "0", "name" }));
+
+    // スクロールバーの操作: moveto / scroll units / scroll pages
+    const cmd = try root.call(.{ table.scrollbar.path, "cget", "-command" });
+    var cmd_buf: [128]u8 = undefined;
+    const c = cmd_buf[0..cmd.len];
+    @memcpy(c, cmd);
+    _ = try root.call(.{ c, "moveto", 0.5 });
+    try testing.expectEqualStrings("p05000", try root.call(.{ tv, "set", "0", "name" }));
+    _ = try root.call(.{ c, "scroll", 3, "units" });
+    try testing.expectEqualStrings("p05003", try root.call(.{ tv, "set", "0", "name" }));
+    _ = try root.call(.{ c, "scroll", -1, "pages" });
+    try testing.expectEqualStrings("p04994", try root.call(.{ tv, "set", "0", "name" }));
+    _ = try root.call(.{ c, "moveto", 1.0 });
+    try testing.expectEqualStrings("p09990", try root.call(.{ tv, "set", "0", "name" }));
+    try testing.expectEqualStrings("p09999", try root.call(.{ tv, "set", "9", "name" }));
+    const sb = try root.call(.{ table.scrollbar.path, "get" });
+    try testing.expectEqualStrings("0.999 1.0", sb);
+
+    // 見えていない行を選ぶと、その行が見える位置までスクロールする
+    try table.select(1234);
+    try testing.expectEqualStrings("p01234", try root.call(.{ tv, "set", "0", "name" }));
+    try testing.expectEqualStrings("0", try root.call(.{ tv, "selection" }));
+
+    // 並べ替えても選択は行に付いて動く(age降順: 69が先頭、同じageの中は元の順)
+    try table.sortBy(.age, true);
+    const sel = try table.selection(testing.allocator);
+    defer testing.allocator.free(sel);
+    try testing.expectEqual(1, sel.len);
+    try testing.expectEqualStrings("p01234", table.get(sel[0]).name);
+    try testing.expectEqual(69, table.get(0).age);
+
+    // 削除すると後ろの行の選択は1つ前へ詰まる
+    try table.remove(0);
+    const sel2 = try table.selection(testing.allocator);
+    defer testing.allocator.free(sel2);
+    try testing.expectEqual(sel[0] - 1, sel2[0]);
+    try testing.expectEqual(9_999, table.len());
+}
+
+test "table moves the selection with keys and scrolls with the wheel" {
+    const root = try initRoot();
+    defer root.deinit();
+    const T = tk.Table(Person);
+    const table = try T.init(testing.allocator, root, .{ .height = 5 });
+    defer table.deinit();
+    try table.pack(.{});
+    var arena: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena.deinit();
+    const rows = try arena.allocator().alloc(Person, 100);
+    for (rows, 0..) |*r, i| r.* = .{ .name = try std.fmt.allocPrint(arena.allocator(), "p{d}", .{i}), .age = 0, .role = .dev, .active = true };
+    try table.setRows(rows);
+    const SelectLog = struct {
+        n: u32 = 0,
+        fn changed(self: *@This()) !void {
+            self.n += 1;
+        }
+    };
+    var log: SelectLog = .{};
+    table.onSelect(&log, SelectLog.changed);
+    const tv = table.treeview();
+
+    try table.select(3);
+    try fire(root, tv, "<Down>", "Down", 0);
+    try fire(root, tv, "<Down>", "Down", 0);
+    var sel = try table.selection(testing.allocator);
+    try testing.expectEqualSlices(usize, &.{5}, sel);
+    testing.allocator.free(sel);
+    // 5行表示なので、カーソル(5行目)が見えるよう1行スクロールしている
+    try testing.expectEqualStrings("p1", try root.call(.{ tv, "set", "0", "name" }));
+
+    try fire(root, tv, "<Shift-Up>", "Up", 0);
+    try fire(root, tv, "<Shift-Up>", "Up", 0);
+    sel = try table.selection(testing.allocator);
+    try testing.expectEqualSlices(usize, &.{ 3, 4, 5 }, sel);
+    testing.allocator.free(sel);
+
+    try fire(root, tv, "<End>", "End", 0);
+    sel = try table.selection(testing.allocator);
+    try testing.expectEqualSlices(usize, &.{99}, sel);
+    testing.allocator.free(sel);
+    try testing.expectEqualStrings("p95", try root.call(.{ tv, "set", "0", "name" }));
+    try testing.expectEqual(5, log.n);
+
+    // ホイール: 1目盛り(120)で3行
+    try fire(root, tv, "<MouseWheel>", "??", 120);
+    try testing.expectEqualStrings("p92", try root.call(.{ tv, "set", "0", "name" }));
+    try fire(root, tv, "<Control-a>", "a", 0);
+    sel = try table.selection(testing.allocator);
+    try testing.expectEqual(100, sel.len);
+    testing.allocator.free(sel);
+
+    // 選択行の一括削除
+    try table.select(0);
+    try fire(root, tv, "<Shift-Down>", "Down", 0);
+    try table.removeSelected();
+    try testing.expectEqual(98, table.len());
+    try testing.expectEqualStrings("p2", table.get(0).name);
+    try testing.expectEqualStrings("p2", try root.call(.{ tv, "set", "0", "name" }));
+}
+
+test "table recomputes how many rows fit when it is resized" {
+    const root = try initRoot();
+    defer root.deinit();
+    const table = try tk.Table(Person).init(testing.allocator, root, .{ .height = 5 });
+    defer table.deinit();
+    try table.pack(.{ .fill = .both, .expand = true });
+    var arena: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena.deinit();
+    const rows = try arena.allocator().alloc(Person, 100);
+    for (rows, 0..) |*r, i| r.* = .{ .name = try std.fmt.allocPrint(arena.allocator(), "p{d}", .{i}), .age = 0, .role = .dev, .active = true };
+    try table.setRows(rows);
+    _ = try root.call(.{ "wm", "deiconify", "." });
+    try root.w.interp.update();
+    try testing.expectEqual(5, table.capacity);
+
+    // 高さを広げると、収まる行数分の項目が置かれる
+    _ = try root.call(.{ table.treeview(), "configure", "-height", 12 });
+    try root.w.interp.update();
+    try root.w.interp.update();
+    try testing.expectEqual(12, table.capacity);
+    const items = try table.treeview().children(testing.allocator, .root);
+    defer testing.allocator.free(items);
+    try testing.expectEqual(12, items.len);
+
+    // テーマを変えると行の高さと余白が変わるが、指定した行数分が収まる
+    try root.setTheme(.sun_valley_light);
+    try root.w.interp.update();
+    try root.w.interp.update();
+    try testing.expectEqual(12, table.capacity);
+}

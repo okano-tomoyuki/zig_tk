@@ -224,6 +224,8 @@ table.onEdit(&app, App.edited); // fn edited(self: *App, row: usize, field: tk.T
 - `.editable = true` なら、セルのダブルクリックで編集できます。入力はフィールドの型に変換して戻し、変換できない入力は確定しません。enum は選択肢から選び、bool はダブルクリックで切り替えます。
 - 使えるフィールドの型は `[]const u8`、整数、浮動小数点数、bool、enum と、それらの optional(空欄が `null`)です。
 - 文字列のフィールドは表が複製して持ちます。`table.get(i)` / `table.items()` で現在の値を取得できます。
+- **行数が多くても軽い**: 行は Zig 側に持ち、Treeview には見えている行の分だけ項目を置きます(仮想化)。20 万行でも `setRows` は約 6 ms、並べ替えは約 22 ms で、スクロールや削除は行数によらず一定です(ReleaseFast、描画の時間を除く)。
+- 縦のスクロールバーは表に内蔵されています。選択(`select` / `selection` / `onSelect` / `removeSelected`)、上下キー・PageUp/PageDown・Home/End・Shift での範囲選択・Ctrl+A、ホイールでのスクロールも表が受け持ちます。
 
 ### スレッド
 
@@ -281,7 +283,7 @@ try root.post(line, Line.append);
 | `zig build run-workers` | 複数のワーカースレッドから `post` で Text に追記 |
 | `zig build run-themes` | 同梱テーマと、明るい/暗いの切り替え(`-- dark` で暗いテーマから起動) |
 | `zig build run-chart` | 2つの系列をリアルタイムに流すグラフ |
-| `zig build run-table` | 構造体の表の並べ替え・編集・追加・削除 |
+| `zig build run-table` | 構造体の表の並べ替え・編集・追加・削除と、10万行の表示 |
 
 ## 開発
 
