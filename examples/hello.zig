@@ -30,18 +30,18 @@ pub fn main(init: std.process.Init) !void {
 
     var app: App = .{};
     app.label = try tk.Label.init(root, .{ .text = "Hello, zig_tk!", .relief = .sunken, .padx = 8, .pady = 4 });
-    try app.label.pack(.{ .side = .top, .fill = .x, .padx = 16, .pady = 8 });
+    try app.label.pack(.{ .side = .top, .fill = .x, .padx = .all(16), .pady = .all(8) });
 
     const buttons = try tk.Frame.init(root, .{});
-    try buttons.pack(.{ .pady = 8 });
+    try buttons.pack(.{ .pady = .all(8) });
 
     const click = try tk.Button.init(buttons, .{ .text = "Click", .width = 10, .command = tk.callback(&app, App.onClick) });
-    try click.grid(.{ .row = 0, .column = 0, .padx = 4 });
+    try click.grid(.{ .row = 0, .column = 0, .padx = .all(4) });
     try click.bind("<Enter>", tk.callback(&app, App.onEnter));
     try click.bind("<Leave>", tk.callback(&app, App.onLeave));
 
     const quit = try tk.Button.init(buttons, .{ .text = "Quit", .width = 10, .command = tk.callback(&root, tk.Tk.quit) });
-    try quit.grid(.{ .row = 0, .column = 1, .padx = 4 });
+    try quit.grid(.{ .row = 0, .column = 1, .padx = .all(4) });
 
     root.mainloop();
 }

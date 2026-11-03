@@ -63,7 +63,7 @@ pub fn main(init: std.process.Init) !void {
     try app.input.pack(.{ .side = .left, .fill = .x, .expand = true });
     try app.input.bind("<Return>", tk.callback(&app, App.addFromKey));
     const add = try ttk.Button.init(controls, .{ .text = "追加", .command = tk.callback(&app, App.add) });
-    try add.pack(.{ .side = .left, .padx = 4 });
+    try add.pack(.{ .side = .left, .padx = .all(4) });
     const remove = try ttk.Button.init(controls, .{ .text = "削除", .command = tk.callback(&app, App.remove) });
     try remove.pack(.{ .side = .left });
 

@@ -86,9 +86,9 @@ pub fn main(init: std.process.Init) !void {
     const undo = try ttk.Button.init(toolbar, .{ .text = "元に戻す", .command = tk.callback(&app, App.undo) });
     try undo.pack(.{ .side = .left });
     const redo = try ttk.Button.init(toolbar, .{ .text = "やり直し", .command = tk.callback(&app, App.redo) });
-    try redo.pack(.{ .side = .left, .padx = 4 });
+    try redo.pack(.{ .side = .left, .padx = .all(4) });
     app.query = try ttk.Entry.init(toolbar, .{ .width = 20 });
-    try app.query.pack(.{ .side = .left, .padx = 4 });
+    try app.query.pack(.{ .side = .left, .padx = .all(4) });
     try app.query.bind("<Return>", tk.callback(&app, App.highlightKey));
     const find = try ttk.Button.init(toolbar, .{ .text = "検索", .command = tk.callback(&app, App.highlight) });
     try find.pack(.{ .side = .left });

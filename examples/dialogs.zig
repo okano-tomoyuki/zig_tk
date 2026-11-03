@@ -55,7 +55,7 @@ pub fn main(init: std.process.Init) !void {
     try body.pack(.{ .fill = .both, .expand = true });
 
     const clock = try ttk.Label.init(body, .{ .textvariable = app.elapsed });
-    try clock.grid(.{ .row = 0, .column = 0, .columnspan = 3, .pady = 4 });
+    try clock.grid(.{ .row = 0, .column = 0, .columnspan = 3, .pady = .all(4) });
 
     const buttons = [_]struct { []const u8, tk.Callback }{
         .{ "質問", tk.callback(&app, App.ask) },
@@ -64,11 +64,11 @@ pub fn main(init: std.process.Init) !void {
     };
     for (buttons, 0..) |entry, i| {
         const b = try ttk.Button.init(body, .{ .text = entry[0], .command = entry[1] });
-        try b.grid(.{ .row = 1, .column = @intCast(i), .padx = 4 });
+        try b.grid(.{ .row = 1, .column = @intCast(i), .padx = .all(4) });
     }
 
     app.swatch = try tk.Frame.init(body, .{ .width = 200, .height = 24, .relief = .sunken, .borderwidth = 1 });
-    try app.swatch.grid(.{ .row = 2, .column = 0, .columnspan = 3, .pady = 6 });
+    try app.swatch.grid(.{ .row = 2, .column = 0, .columnspan = 3, .pady = .all(6) });
 
     const status = try ttk.Label.init(body, .{ .textvariable = app.status, .foreground = "gray25" });
     try status.grid(.{ .row = 3, .column = 0, .columnspan = 3 });

@@ -28,18 +28,18 @@ pub fn main(init: std.process.Init) !void {
 
     // 左: チェックボタンとラジオボタン
     const choices = try ttk.Labelframe.init(body, .{ .text = "選択", .padding = .all(12) });
-    try choices.grid(.{ .row = 0, .column = 0, .sticky = .nsew, .padx = 6 });
+    try choices.grid(.{ .row = 0, .column = 0, .sticky = .nsew, .padx = .all(6) });
     const opt_a: tk.BooleanVar = try .init(root, .{ .value = true });
     const opt_b: tk.BooleanVar = try .init(root, .{});
     const c1 = try ttk.CheckbuttonOf(bool).init(choices, .{ .text = "自動保存", .variable = opt_a });
-    try c1.grid(.{ .row = 0, .column = 0, .sticky = .{ .w = true }, .pady = 4 });
+    try c1.grid(.{ .row = 0, .column = 0, .sticky = .{ .w = true }, .pady = .all(4) });
     const c2 = try ttk.CheckbuttonOf(bool).init(choices, .{ .text = "通知を表示", .variable = opt_b });
-    try c2.grid(.{ .row = 1, .column = 0, .sticky = .{ .w = true }, .pady = 4 });
+    try c2.grid(.{ .row = 1, .column = 0, .sticky = .{ .w = true }, .pady = .all(4) });
     const Size = enum { small, medium, large };
     const size: tk.Variable(Size) = try .init(root, .{ .value = .medium });
     inline for (.{ .{ "小", Size.small }, .{ "中", Size.medium }, .{ "大", Size.large } }, 2..) |r, row| {
         const rb = try ttk.RadiobuttonOf(Size).init(choices, .{ .text = r[0], .variable = size, .value = r[1] });
-        try rb.grid(.{ .row = row, .column = 0, .sticky = .{ .w = true }, .pady = 4 });
+        try rb.grid(.{ .row = row, .column = 0, .sticky = .{ .w = true }, .pady = .all(4) });
     }
 
     // 中央: 入力欄とボタン
@@ -47,37 +47,37 @@ pub fn main(init: std.process.Init) !void {
     try inputs.grid(.{ .row = 0, .column = 1, .sticky = .nsew });
     const entry = try ttk.Entry.init(inputs, .{ .width = 22 });
     try entry.insert(.end, "テキストを入力");
-    try entry.grid(.{ .row = 0, .column = 0, .sticky = .ew, .pady = 4 });
+    try entry.grid(.{ .row = 0, .column = 0, .sticky = .ew, .pady = .all(4) });
     const spin = try ttk.Spinbox.init(inputs, .{ .from = 0, .to = 100, .increment = 5, .width = 20 });
     try spin.set("25");
-    try spin.grid(.{ .row = 1, .column = 0, .sticky = .ew, .pady = 4 });
+    try spin.grid(.{ .row = 1, .column = 0, .sticky = .ew, .pady = .all(4) });
     const combo = try ttk.Combobox.init(inputs, .{ .values = &.{ "Zig", "C", "Tcl" }, .state = .readonly, .width = 20 });
     try combo.setCurrent(0);
-    try combo.grid(.{ .row = 2, .column = 0, .sticky = .ew, .pady = 4 });
+    try combo.grid(.{ .row = 2, .column = 0, .sticky = .ew, .pady = .all(4) });
     const button = try ttk.Button.init(inputs, .{ .text = "ボタン" });
-    try button.grid(.{ .row = 3, .column = 0, .sticky = .ew, .pady = 4 });
+    try button.grid(.{ .row = 3, .column = 0, .sticky = .ew, .pady = .all(4) });
     // Sun Valley はアクセントカラーのボタンとトグルボタンのスタイルを持つ
     const accent = try ttk.Button.init(inputs, .{ .text = "アクセントボタン", .style = "Accent.TButton" });
-    try accent.grid(.{ .row = 4, .column = 0, .sticky = .ew, .pady = 4 });
+    try accent.grid(.{ .row = 4, .column = 0, .sticky = .ew, .pady = .all(4) });
     const toggle_var: tk.BooleanVar = try .init(root, .{});
     const toggle = try ttk.CheckbuttonOf(bool).init(inputs, .{ .text = "トグルボタン", .variable = toggle_var, .style = "Toggle.TButton" });
-    try toggle.grid(.{ .row = 5, .column = 0, .sticky = .ew, .pady = 4 });
+    try toggle.grid(.{ .row = 5, .column = 0, .sticky = .ew, .pady = .all(4) });
 
     // 右: テーマのスイッチ、スライダー、進捗、一覧
     const right = try ttk.Frame.init(body, .{});
-    try right.grid(.{ .row = 0, .column = 2, .sticky = .nsew, .padx = 6 });
+    try right.grid(.{ .row = 0, .column = 2, .sticky = .nsew, .padx = .all(6) });
     const dark_switch = try ttk.CheckbuttonOf(bool).init(right, .{
         .text = "ダークモード",
         .variable = app.dark,
         .style = "Switch.TCheckbutton",
         .command = tk.callback(&app, App.toggleTheme),
     });
-    try dark_switch.grid(.{ .row = 0, .column = 0, .sticky = .{ .e = true }, .pady = 4 });
+    try dark_switch.grid(.{ .row = 0, .column = 0, .sticky = .{ .e = true }, .pady = .all(4) });
     const level: tk.DoubleVar = try .init(root, .{ .value = 60 });
     const scale = try ttk.Scale.init(right, .{ .from = 0, .to = 100, .variable = level, .length = 220 });
-    try scale.grid(.{ .row = 1, .column = 0, .sticky = .ew, .pady = 4 });
+    try scale.grid(.{ .row = 1, .column = 0, .sticky = .ew, .pady = .all(4) });
     const progress = try ttk.Progressbar.init(right, .{ .maximum = 100, .variable = level });
-    try progress.grid(.{ .row = 2, .column = 0, .sticky = .ew, .pady = 4 });
+    try progress.grid(.{ .row = 2, .column = 0, .sticky = .ew, .pady = .all(4) });
     const tree = try ttk.Treeview.init(right, .{ .columns = &.{"size"}, .height = 5 });
     try tree.heading(ttk.Treeview.tree_column, .{ .text = "名前" });
     try tree.heading("size", .{ .text = "サイズ" });
@@ -87,7 +87,7 @@ pub fn main(init: std.process.Init) !void {
     _ = try tree.insert(src, .end, .{ .text = "root.zig", .values = &.{"4 KB"} });
     _ = try tree.insert(src, .end, .{ .text = "theme.zig", .values = &.{"3 KB"} });
     _ = try tree.insert(.root, .end, .{ .text = "README.md", .values = &.{"12 KB"} });
-    try tree.grid(.{ .row = 3, .column = 0, .sticky = .nsew, .pady = 4 });
+    try tree.grid(.{ .row = 3, .column = 0, .sticky = .nsew, .pady = .all(4) });
 
     root.mainloop();
 }

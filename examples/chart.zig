@@ -48,7 +48,7 @@ pub fn main(init: std.process.Init) !void {
         .running = try .init(root, .{ .value = true }),
     };
     const pause = try ttk.CheckbuttonOf(bool).init(body, .{ .text = "更新する", .variable = app.running, .style = "Switch.TCheckbutton" });
-    try pause.pack(.{ .anchor = .e, .pady = 4 });
+    try pause.pack(.{ .anchor = .e, .pady = .all(4) });
 
     try app.tick();
     root.mainloop();

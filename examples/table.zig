@@ -74,7 +74,7 @@ pub fn main(init: std.process.Init) !void {
     try body.pack(.{ .fill = .both, .expand = true });
 
     const toolbar = try ttk.Frame.init(body, .{});
-    try toolbar.pack(.{ .fill = .x, .pady = 6 });
+    try toolbar.pack(.{ .fill = .x, .pady = .all(6) });
 
     // 縦のスクロールバーは表に内蔵されている
     const table = try Members.init(init.gpa, body, .{
@@ -106,11 +106,11 @@ pub fn main(init: std.process.Init) !void {
     const add = try ttk.Button.init(toolbar, .{ .text = "追加", .style = "Accent.TButton", .command = tk.callback(&app, App.add) });
     try add.pack(.{ .side = .left });
     const del = try ttk.Button.init(toolbar, .{ .text = "選択行を削除", .command = tk.callback(&app, App.remove) });
-    try del.pack(.{ .side = .left, .padx = 6 });
+    try del.pack(.{ .side = .left, .padx = .all(6) });
     const gen = try ttk.Button.init(toolbar, .{ .text = "10万行を生成", .command = tk.callback(&app, App.generate) });
     try gen.pack(.{ .side = .left });
     const status = try ttk.Label.init(body, .{ .textvariable = app.status });
-    try status.pack(.{ .anchor = .w, .pady = 6 });
+    try status.pack(.{ .anchor = .w, .pady = .all(6) });
 
     try table.sortBy(.age, false);
     root.mainloop();

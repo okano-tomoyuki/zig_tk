@@ -6,10 +6,12 @@ const interp_mod = @import("interp.zig");
 const Interp = interp_mod.Interp;
 const Error = interp_mod.Error;
 
-/// 引数なしのコールバック(command=等)。
+/// 引数なしのコールバック(command=等)。Scaleのcommandのように、Tkが値を付け足して呼ぶものにも使う
+/// (func(ctx, f64) から作ったものは、その値を受け取る)。
 pub const Callback = struct {
     ctx: ?*anyopaque,
-    func: *const fn (ctx: ?*anyopaque) anyerror!void,
+    /// argsはTkがコマンドに付け足した引数(Scaleのcommandなら現在値。無ければ空)。
+    func: *const fn (ctx: ?*anyopaque, args: []const *tcl.Obj) anyerror!void,
 
     /// オプション以外の場所(Interp.callの引数等)で使われた場合は一意な名前で登録する。
     pub fn toTclObj(self: Callback, interp: *Interp) Error!*tcl.Obj {
@@ -112,6 +114,7 @@ pub const ValidateCallback = struct {
 
 /// ctx(ポインタ)とfuncからコールバックを作る。
 /// - func(ctx) / func(ctx) !void          → Callback
+/// - func(ctx, f64) / func(ctx, f64) !void → Callback(Scaleのcommand用。Tkが付け足した現在値を受け取る)
 /// - func(ctx, Event) / func(ctx, Event) !void → EventCallback
 /// - func(ctx, Validation) bool / !bool        → ValidateCallback(validatecommand用)
 /// funcの第1引数がポインタでなく値(例: Tk.quit(self: Tk))の場合は、呼び出し時に*ctxを渡す。
@@ -125,7 +128,8 @@ pub fn callback(ctx: anytype, comptime func: anytype) CallbackType(@TypeOf(func)
             const ptr: P = @ptrCast(@alignCast(p.?));
             return if (by_value) ptr.* else ptr;
         }
-        fn call(p: ?*anyopaque) anyerror!void {
+        fn call(p: ?*anyopaque, args: []const *tcl.Obj) anyerror!void {
+            if (comptime takesValue(@TypeOf(func))) return func(arg(p), try valueOf(args));
             return func(arg(p));
         }
         fn callEvent(p: ?*anyopaque, event: Event) anyerror!void {
@@ -147,7 +151,8 @@ pub fn callback(ctx: anytype, comptime func: anytype) CallbackType(@TypeOf(func)
 /// コンテキストを持たない関数からコールバックを作る。例: tk.callbackFn(onQuit)
 pub fn callbackFn(comptime func: anytype) CallbackType(@TypeOf(func)) {
     const Wrap = struct {
-        fn call(_: ?*anyopaque) anyerror!void {
+        fn call(_: ?*anyopaque, args: []const *tcl.Obj) anyerror!void {
+            if (comptime takesValue(@TypeOf(func))) return func(try valueOf(args));
             return func();
         }
         fn callEvent(_: ?*anyopaque, event: Event) anyerror!void {
@@ -163,6 +168,19 @@ pub fn callbackFn(comptime func: anytype) CallbackType(@TypeOf(func)) {
         ValidateCallback => .{ .ctx = null, .func = Wrap.callValidate },
         else => unreachable,
     };
+}
+
+/// funcの最後の引数がf64(Scaleのcommandの現在値を受け取る)か。
+fn takesValue(comptime F: type) bool {
+    const params = @typeInfo(F).@"fn".param_types;
+    return params.len > 0 and params[params.len - 1] == f64;
+}
+
+/// Tkがコマンドに付け足した最初の引数を数値として読む。
+fn valueOf(args: []const *tcl.Obj) error{CallbackValueMissing}!f64 {
+    if (args.len == 0) return error.CallbackValueMissing;
+    const text = std.mem.trim(u8, tcl.getString(args[0]), " ");
+    return std.fmt.parseFloat(f64, text) catch error.CallbackValueMissing;
 }
 
 fn CallbackType(comptime F: type) type {
@@ -183,7 +201,7 @@ pub fn register(interp: *Interp, name: [:0]const u8, cb: anytype) Error!void {
             const box: *@This() = @ptrCast(@alignCast(client_data.?));
             const args = objv[1..@intCast(objc)];
             switch (Cb) {
-                Callback => box.cb.func(box.cb.ctx) catch |err| return fail(raw, err),
+                Callback => box.cb.func(box.cb.ctx, args) catch |err| return fail(raw, err),
                 EventCallback => {
                     if (args.len != Event.substitutions.len) return setError(raw, "zig_tk: unexpected event argument count");
                     box.cb.func(box.cb.ctx, Event.fromObjv(args)) catch |err| return fail(raw, err);

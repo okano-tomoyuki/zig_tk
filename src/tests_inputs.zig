@@ -111,6 +111,31 @@ test "scales report values and follow their variable" {
     try testing.expectEqualStrings("-1.0", try ttk_scale.cget(.from));
 }
 
+test "scale commands receive the current value" {
+    const root = try initRoot();
+    defer root.deinit();
+
+    const Probe = struct {
+        value: f64 = 0,
+        plain_calls: u32 = 0,
+        fn onValue(self: *@This(), value: f64) !void {
+            self.value = value;
+        }
+        fn onPlain(self: *@This()) !void {
+            self.plain_calls += 1;
+        }
+    };
+    var probe: Probe = .{};
+    // Tkはcommandに現在値を付け足して呼ぶ。func(ctx, f64)はそれを受け取り、func(ctx)は無視する
+    const scale = try tk.ttk.Scale.init(root, .{ .from = 0, .to = 10, .command = tk.callback(&probe, Probe.onValue) });
+    _ = try root.call(.{ try scale.cget(.command), "3.5" });
+    try testing.expectEqual(3.5, probe.value);
+
+    const classic = try tk.Scale.init(root, .{ .from = 0, .to = 10, .command = tk.callback(&probe, Probe.onPlain) });
+    _ = try root.call(.{ try classic.cget(.command), "4" });
+    try testing.expectEqual(1, probe.plain_calls);
+}
+
 test "spinboxes step through values" {
     const root = try initRoot();
     defer root.deinit();

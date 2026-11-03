@@ -49,6 +49,25 @@ pub const Padding = struct {
     }
 };
 
+/// pack/gridの-padx/-pady(外側の余白)。例: .padx = .all(8) / .padx = .pair(8, 4)
+/// pairは左右(padx)・上下(pady)で異なる余白(Tkの -padx {8 4})。
+pub const Pad = struct {
+    before: i32,
+    after: i32,
+
+    pub fn all(n: i32) Pad {
+        return .{ .before = n, .after = n };
+    }
+    pub fn pair(before: i32, after: i32) Pad {
+        return .{ .before = before, .after = after };
+    }
+
+    pub fn toTclObj(self: Pad, interp: *Interp) Error!*tcl.Obj {
+        if (self.before == self.after) return value.toObj(interp, self.before);
+        return value.toObj(interp, .{ self.before, self.after });
+    }
+};
+
 /// Entry等の文字位置。例: .at(0) / .end / .insert / .sel_first
 pub const Index = union(enum) {
     pos: i32,

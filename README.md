@@ -22,7 +22,7 @@ pub fn main(init: std.process.Init) !void {
     const label = try tk.ttk.Label.init(root, .{ .text = "Hello, zig_tk!", .padding = .all(12) });
     try label.pack(.{});
     const quit = try tk.ttk.Button.init(root, .{ .text = "Quit", .command = tk.callback(&root, tk.Tk.quit) });
-    try quit.pack(.{ .pady = 8 });
+    try quit.pack(.{ .pady = .all(8) });
 
     root.mainloop();
 }
@@ -112,7 +112,7 @@ Linux の実行時には、libX11、libXft、fontconfig、freetype、libXss、li
 
 ```zig
 const entry = try tk.ttk.Entry.init(frame, .{ .width = 30, .textvariable = name });
-try entry.grid(.{ .row = 0, .column = 1, .sticky = .ew, .padx = 4 });
+try entry.grid(.{ .row = 0, .column = 1, .sticky = .ew, .padx = .all(4) });
 try frame.gridColumnconfigure(1, .{ .weight = 1 });
 try entry.config(.{ .state = .disabled });
 const width = try entry.cget(.width);   // cget の引数もオプション名の enum
@@ -121,6 +121,7 @@ const width = try entry.cget(.width);   // cget の引数もオプション名�
 - Widget は「インタプリタ + パス名」だけを持つ値で、自由にコピーできます。
 - 第1引数は親 Widget です(Tkinter の暗黙の既定ルートはありません)。
 - `pack` / `grid` / `place` / `bind` / `winfo` / `eventGenerate` などは、全 Widget 共通のメソッドです。
+- `pack` / `grid` の外側の余白(`padx` / `pady`)は `.all(4)` で両側、`.pair(8, 4)` で左右(上下)別々に指定します(Tk の `-padx {8 4}`)。
 
 ### コールバック
 
@@ -143,7 +144,7 @@ _ = try tk.ttk.Entry.init(root, .{ .validate = .key, .validatecommand = tk.callb
 _ = try root.after(1000, tk.callback(&app, App.onClick));
 ```
 
-- 関数の引数の形で種類が決まります。`fn (ctx)` は command 用、`fn (ctx, tk.Event)` は bind 用、`fn (ctx, tk.Validation) bool` は入力検証用です。コンテキストが不要な場合は `tk.callbackFn(func)` を使います。
+- 関数の引数の形で種類が決まります。`fn (ctx)` は command 用(`fn (ctx, f64)` にすると、Scale の command で現在値を受け取れます)、`fn (ctx, tk.Event)` は bind 用、`fn (ctx, tk.Validation) bool` は入力検証用です。コンテキストが不要な場合は `tk.callbackFn(func)` を使います。
 - コールバックがエラーを返した場合は、Tk のエラー報告(`bgerror`)に回されます。
 - **ctx のポインタは、そのコールバックが呼ばれる可能性がある間、有効である必要があります**(通常は `mainloop` を呼ぶ関数のローカル変数で十分です)。
 

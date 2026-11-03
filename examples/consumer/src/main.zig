@@ -9,7 +9,7 @@ pub fn main(init: std.process.Init) !void {
     const label = try tk.ttk.Label.init(root, .{ .text = "zig_tk をパッケージとして利用しています", .padding = .all(12) });
     try label.pack(.{});
     const quit = try tk.ttk.Button.init(root, .{ .text = "Quit", .command = tk.callback(&root, tk.Tk.quit) });
-    try quit.pack(.{ .pady = 8 });
+    try quit.pack(.{ .pady = .all(8) });
 
     root.mainloop();
 }

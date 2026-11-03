@@ -42,6 +42,22 @@ test "every widget type exposes the common methods" {
     }
 }
 
+test "pack and grid accept a pair of outer paddings" {
+    const root = try initRoot();
+    defer root.deinit();
+
+    const a = try tk.ttk.Label.init(root, .{ .text = "a" });
+    try a.pack(.{ .padx = .pair(8, 4), .pady = .all(2) });
+    try testing.expectEqualStrings("8 4", try root.call(.{ "dict", "get", try root.call(.{ "pack", "info", a }), "-padx" }));
+    try testing.expectEqualStrings("2", try root.call(.{ "dict", "get", try root.call(.{ "pack", "info", a }), "-pady" }));
+
+    const frame = try tk.ttk.Frame.init(root, .{});
+    try frame.pack(.{});
+    const b = try tk.ttk.Label.init(frame, .{ .text = "b" });
+    try b.grid(.{ .row = 0, .column = 0, .padx = .all(3), .pady = .pair(0, 7) });
+    try testing.expectEqualStrings("0 7", try root.call(.{ "dict", "get", try root.call(.{ "grid", "info", b }), "-pady" }));
+}
+
 test "grid row and column weights distribute extra space" {
     const root = try initRoot();
     defer root.deinit();

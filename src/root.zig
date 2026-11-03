@@ -3,7 +3,7 @@
 //!     const root = try tk.Tk.init(gpa);
 //!     defer root.deinit();
 //!     const btn = try tk.Button.init(root, .{ .text = "Click", .command = tk.callback(&app, App.onClick) });
-//!     try btn.pack(.{ .side = .left, .padx = 4 });
+//!     try btn.pack(.{ .side = .left, .padx = .all(4) });
 //!     root.mainloop();
 
 pub const tcl = @import("tcl.zig");
@@ -42,6 +42,7 @@ pub const Compound = types.Compound;
 pub const Sticky = types.Sticky;
 pub const Validate = types.Validate;
 pub const Padding = types.Padding;
+pub const Pad = types.Pad;
 pub const Index = types.Index;
 pub const ListIndex = types.ListIndex;
 pub const scroll = @import("scroll.zig");

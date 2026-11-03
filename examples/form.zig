@@ -40,17 +40,17 @@ pub fn main(init: std.process.Init) !void {
     try body.pack(.{ .fill = .both, .expand = true });
 
     const name_label = try ttk.Label.init(body, .{ .text = "Name" });
-    try name_label.grid(.{ .row = 0, .column = 0, .sticky = .{ .w = true }, .pady = 2 });
+    try name_label.grid(.{ .row = 0, .column = 0, .sticky = .{ .w = true }, .pady = .all(2) });
     const name_entry = try ttk.Entry.init(body, .{ .textvariable = form.name, .width = 24 });
-    try name_entry.grid(.{ .row = 0, .column = 1, .sticky = .ew, .pady = 2 });
+    try name_entry.grid(.{ .row = 0, .column = 1, .sticky = .ew, .pady = .all(2) });
 
     const pw_label = try ttk.Label.init(body, .{ .text = "Password" });
-    try pw_label.grid(.{ .row = 1, .column = 0, .sticky = .{ .w = true }, .pady = 2 });
+    try pw_label.grid(.{ .row = 1, .column = 0, .sticky = .{ .w = true }, .pady = .all(2) });
     const pw_entry = try ttk.Entry.init(body, .{ .textvariable = form.password, .show = "*", .width = 24 });
-    try pw_entry.grid(.{ .row = 1, .column = 1, .sticky = .ew, .pady = 2 });
+    try pw_entry.grid(.{ .row = 1, .column = 1, .sticky = .ew, .pady = .all(2) });
 
     form.ok = try ttk.Button.init(body, .{ .text = "OK", .command = tk.callback(&form, Form.onSubmit) });
-    try form.ok.grid(.{ .row = 2, .column = 1, .sticky = .{ .e = true }, .pady = 6 });
+    try form.ok.grid(.{ .row = 2, .column = 1, .sticky = .{ .e = true }, .pady = .all(6) });
 
     const status = try ttk.Label.init(body, .{ .textvariable = form.status, .foreground = "gray25" });
     try status.grid(.{ .row = 3, .column = 0, .columnspan = 2, .sticky = .{ .w = true } });
